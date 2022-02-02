@@ -50,6 +50,10 @@ class DependencyResolutionProcess {
         }
     }
 
+    public void registerEnclosingType(String typeName) {
+        resolutionRun.registerEnclosingType(typeName);
+    }
+
     public void registerAnnotationType(String typeName) {
         resolutionRun.registerAnnotationType(typeName);
     }
@@ -64,6 +68,7 @@ class DependencyResolutionProcess {
         private static final int maxRunsForMemberTypes = 1;
         private static final int maxRunsForAccessesToTypes = 1;
         private static final int maxRunsForSupertypes = -1;
+        private static final int maxRunsForEnclosingTypes = -1;
         private static final int maxRunsForAnnotationTypes = -1;
 
         private int runNumber = 1;
@@ -83,6 +88,12 @@ class DependencyResolutionProcess {
 
         void registerSupertype(String typeName) {
             if (runNumberHasNotExceeded(maxRunsForSupertypes)) {
+                currentTypeNames.add(typeName);
+            }
+        }
+
+        void registerEnclosingType(String typeName) {
+            if (runNumberHasNotExceeded(maxRunsForEnclosingTypes)) {
                 currentTypeNames.add(typeName);
             }
         }
