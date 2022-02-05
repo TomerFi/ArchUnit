@@ -58,6 +58,10 @@ class DependencyResolutionProcess {
         resolutionRun.registerAnnotationType(typeName);
     }
 
+    public void registerGenericSignatureType(String typeName) {
+        resolutionRun.registerGenericSignatureType(typeName);
+    }
+
     public void resolve(ImportedClasses classes) {
         resolutionRun.execute(classes);
     }
@@ -70,6 +74,7 @@ class DependencyResolutionProcess {
         private static final int maxRunsForSupertypes = -1;
         private static final int maxRunsForEnclosingTypes = -1;
         private static final int maxRunsForAnnotationTypes = -1;
+        private static final int maxRunsForGenericSignatureTypes = -1;
 
         private int runNumber = 1;
         private boolean shouldContinue;
@@ -100,6 +105,12 @@ class DependencyResolutionProcess {
 
         void registerAnnotationType(String typeName) {
             if (runNumberHasNotExceeded(maxRunsForAnnotationTypes)) {
+                currentTypeNames.add(typeName);
+            }
+        }
+
+        public void registerGenericSignatureType(String typeName) {
+            if (runNumberHasNotExceeded(maxRunsForGenericSignatureTypes)) {
                 currentTypeNames.add(typeName);
             }
         }
