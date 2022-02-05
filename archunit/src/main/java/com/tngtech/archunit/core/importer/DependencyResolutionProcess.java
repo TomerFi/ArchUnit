@@ -17,13 +17,36 @@ package com.tngtech.archunit.core.importer;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
+import com.tngtech.archunit.ArchConfiguration;
 import com.tngtech.archunit.core.importer.ImportedClasses.ImportedClassState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.tngtech.archunit.core.importer.ImportedClasses.ImportedClassState.HAD_TO_BE_IMPORTED;
+import static java.lang.System.lineSeparator;
 
 class DependencyResolutionProcess {
+    private static final Logger log = LoggerFactory.getLogger(DependencyResolutionProcess.class);
+
+    static final String DEPENDENCY_RESOLUTION_PROCESS_PROPERTY_PREFIX = "import.dependencyResolutionProcess";
+
+    static final String MAX_ITERATIONS_FOR_MEMBER_TYPES_PROPERTY_NAME = "maxIterationsForMemberTypes";
+    static final String MAX_ITERATIONS_FOR_ACCESSES_TO_TYPES_PROPERTY_NAME = "maxIterationsForAccessesToTypes";
+    static final String MAX_ITERATIONS_FOR_SUPERTYPES_PROPERTY_NAME = "maxIterationsForSupertypes";
+    static final String MAX_ITERATIONS_FOR_ENCLOSING_TYPES_PROPERTY_NAME = "maxIterationsForEnclosingTypes";
+    static final String MAX_ITERATIONS_FOR_ANNOTATION_TYPES_PROPERTY_NAME = "maxIterationsForAnnotationTypes";
+    static final String MAX_ITERATIONS_FOR_GENERIC_SIGNATURE_TYPES_PROPERTY_NAME = "maxIterationsForGenericSignatureTypes";
+
+    static final int MAX_ITERATIONS_FOR_MEMBER_TYPES_DEFAULT_VALUE = 1;
+    static final int MAX_ITERATIONS_FOR_ACCESSES_TO_TYPES_DEFAULT_VALUE = 1;
+    static final int MAX_ITERATIONS_FOR_SUPERTYPES_DEFAULT_VALUE = -1;
+    static final int MAX_ITERATIONS_FOR_ENCLOSING_TYPES_DEFAULT_VALUE = -1;
+    static final int MAX_ITERATIONS_FOR_ANNOTATION_TYPES_DEFAULT_VALUE = -1;
+    static final int MAX_ITERATIONS_FOR_GENERIC_SIGNATURE_TYPES_DEFAULT_VALUE = -1;
+
     private final ResolutionRun resolutionRun = new ResolutionRun();
 
     void registerMemberType(String typeName) {
@@ -67,14 +90,26 @@ class DependencyResolutionProcess {
     }
 
     private static class ResolutionRun {
-        private Set<String> currentTypeNames = new HashSet<>();
+        private final Properties resolutionProcessProperties = ArchConfiguration.get().getSubProperties(DEPENDENCY_RESOLUTION_PROCESS_PROPERTY_PREFIX);
 
-        private static final int maxRunsForMemberTypes = 1;
-        private static final int maxRunsForAccessesToTypes = 1;
-        private static final int maxRunsForSupertypes = -1;
-        private static final int maxRunsForEnclosingTypes = -1;
-        private static final int maxRunsForAnnotationTypes = -1;
-        private static final int maxRunsForGenericSignatureTypes = -1;
+        private final int maxRunsForMemberTypes = getConfiguredIterations(
+                MAX_ITERATIONS_FOR_MEMBER_TYPES_PROPERTY_NAME, MAX_ITERATIONS_FOR_MEMBER_TYPES_DEFAULT_VALUE);
+        private final int maxRunsForAccessesToTypes = getConfiguredIterations(
+                MAX_ITERATIONS_FOR_ACCESSES_TO_TYPES_PROPERTY_NAME, MAX_ITERATIONS_FOR_ACCESSES_TO_TYPES_DEFAULT_VALUE);
+        private final int maxRunsForSupertypes = getConfiguredIterations(
+                MAX_ITERATIONS_FOR_SUPERTYPES_PROPERTY_NAME, MAX_ITERATIONS_FOR_SUPERTYPES_DEFAULT_VALUE);
+        private final int maxRunsForEnclosingTypes = getConfiguredIterations(
+                MAX_ITERATIONS_FOR_ENCLOSING_TYPES_PROPERTY_NAME, MAX_ITERATIONS_FOR_ENCLOSING_TYPES_DEFAULT_VALUE);
+        private final int maxRunsForAnnotationTypes = getConfiguredIterations(
+                MAX_ITERATIONS_FOR_ANNOTATION_TYPES_PROPERTY_NAME, MAX_ITERATIONS_FOR_ANNOTATION_TYPES_DEFAULT_VALUE);
+        private final int maxRunsForGenericSignatureTypes = getConfiguredIterations(
+                MAX_ITERATIONS_FOR_GENERIC_SIGNATURE_TYPES_PROPERTY_NAME, MAX_ITERATIONS_FOR_GENERIC_SIGNATURE_TYPES_DEFAULT_VALUE);
+
+        private int getConfiguredIterations(String propertyName, int defaultValue) {
+            return Integer.parseInt(resolutionProcessProperties.getProperty(propertyName, String.valueOf(defaultValue)));
+        }
+
+        private Set<String> currentTypeNames = new HashSet<>();
 
         private int runNumber = 1;
         private boolean shouldContinue;
@@ -120,9 +155,24 @@ class DependencyResolutionProcess {
         }
 
         void execute(ImportedClasses classes) {
+            logConfiguration();
             do {
                 executeRun(classes);
             } while (shouldContinue);
+        }
+
+        private void logConfiguration() {
+            log.info("Automatically resolving transitive class dependencies with the following configuration:{}{}{}{}{}{}",
+                    formatConfigProperty(MAX_ITERATIONS_FOR_MEMBER_TYPES_PROPERTY_NAME, maxRunsForMemberTypes),
+                    formatConfigProperty(MAX_ITERATIONS_FOR_ACCESSES_TO_TYPES_PROPERTY_NAME, maxRunsForAccessesToTypes),
+                    formatConfigProperty(MAX_ITERATIONS_FOR_SUPERTYPES_PROPERTY_NAME, maxRunsForSupertypes),
+                    formatConfigProperty(MAX_ITERATIONS_FOR_ENCLOSING_TYPES_PROPERTY_NAME, maxRunsForEnclosingTypes),
+                    formatConfigProperty(MAX_ITERATIONS_FOR_ANNOTATION_TYPES_PROPERTY_NAME, maxRunsForAnnotationTypes),
+                    formatConfigProperty(MAX_ITERATIONS_FOR_GENERIC_SIGNATURE_TYPES_PROPERTY_NAME, maxRunsForGenericSignatureTypes));
+        }
+
+        private String formatConfigProperty(String propertyName, int number) {
+            return lineSeparator() + DEPENDENCY_RESOLUTION_PROCESS_PROPERTY_PREFIX + "." + propertyName + " = " + number;
         }
 
         private void executeRun(ImportedClasses classes) {
